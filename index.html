@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conflict-Free Student Timetable</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger-bg: #fef2f2;
+      --danger-border: #fca5a5;
+      --danger-text: #991b1b;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
+    .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+    header { border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    header h1 { font-size: 1.5rem; color: var(--text); }
+    header p { color: var(--muted); font-size: 0.9rem; }
+
+    .grid-container { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+    @media (max-width: 900px) { .grid-container { grid-template-columns: 1fr; } }
+
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .card h2 { font-size: 1.1rem; margin-bottom: 12px; }
+
+    /* Form Styles */
+    form { display: flex; flex-direction: column; gap: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+    input, select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; }
+    input:focus, select:focus { outline: 2px solid var(--primary); border-color: transparent; }
+    button { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: var(--primary-hover); }
+
+    /* Alert Box */
+    .alert { display: none; background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger-text); padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px; }
+
+    /* Timetable Grid */
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+    th, td { border: 1px solid var(--border); padding: 10px; vertical-align: top; }
+    th { background-color: #f1f5f9; font-weight: 600; }
+    .time-col { width: 90px; text-align: center; color: var(--muted); font-weight: bold; }
+
+    /* Class Cards inside timetable */
+    .course-chip {
+      padding: 6px 8px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      color: white;
+      font-size: 0.8rem;
+      position: relative;
+    }
+    .course-chip strong { display: block; font-size: 0.85rem; }
+    .course-chip .location { font-size: 0.75rem; opacity: 0.9; }
+    .delete-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.2);
+      border: none;
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      line-height: 16px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 10px;
+      padding: 0;
+    }
+    .delete-btn:hover { background: rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Student Timetable & Schedule Checker</h1>
+    <p>Automated non-conflicting schedule generator and conflict detection tool.</p>
+  </header>
+
+  <div id="alert-box" class="alert"></div>
+
+  <div class="grid-container">
+    <!-- Class Input Form -->
+    <div class="card">
+      <h2>Add Course Subject</h2>
+      <form id="course-form">
+        <div class="form-group">
+          <label for="course-code">Course Code & Name</label>
+          <input type="text" id="course-code" placeholder="e.g., CS101 Data Structures" required>
+        </div>
+        <div class="form-group">
+          <label for="day">Day</label>
+          <select id="day" required>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="start-time">Start Time</label>
+          <select id="start-time" required>
+            <option value="09:00">09:00 AM</option>
+            <option value="10:00">10:00 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="12:00">12:00 PM</option>
+            <option value="13:00">01:00 PM</option>
+            <option value="14:00">02:00 PM</option>
+            <option value="15:00">03:00 PM</option>
+            <option value="16:00">04:00 PM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="end-time">End Time</label>
+          <select id="end-time" required>
+            <option value="10:00">10:00 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="12:00">12:00 PM</option>
+            <option value="13:00">01:00 PM</option>
+            <option value="14:00">02:00 PM</option>
+            <option value="15:00">03:00 PM</option>
+            <option value="16:00">04:00 PM</option>
+            <option value="17:00">05:00 PM</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="location">Room / Hall</label>
+          <input type="text" id="location" placeholder="e.g., Room 302" required>
+        </div>
+        <button type="submit">Add to Schedule</button>
+      </form>
+    </div>
+
+    <!-- Timetable Display Grid -->
+    <div class="card">
+      <h2>Weekly Schedule</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th class="time-col">Time</th>
+              <th>Monday</th>
+              <th>Tuesday</th>
+              <th>Wednesday</th>
+              <th>Thursday</th>
+              <th>Friday</th>
+            </tr>
+          </thead>
+          <tbody id="timetable-body">
+            <!-- Table rows generated dynamically by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Sample Non-Conflicting Default Schedule
+  let schedule = [
+    { id: 1, name: "CS101 Intro to CS", day: "Monday", start: "09:00", end: "10:00", room: "Hall A", color: "#2563eb" },
+    { id: 2, name: "MATH201 Calculus II", day: "Monday", start: "10:00", end: "11:00", room: "Room 102", color: "#059669" },
+    { id: 3, name: "PHY101 Physics Lab", day: "Monday", start: "14:00", end: "16:00", room: "Lab B", color: "#d97706" },
+    
+    { id: 4, name: "ENG102 Technical Writing", day: "Tuesday", start: "09:00", end: "10:00", room: "Room 201", color: "#7c3aed" },
+    { id: 5, name: "CS101 Intro to CS", day: "Tuesday", start: "11:00", end: "12:00", room: "Hall A", color: "#2563eb" },
+    
+    { id: 6, name: "MATH201 Calculus II", day: "Wednesday", start: "10:00", end: "11:00", room: "Room 102", color: "#059669" },
+    { id: 7, name: "CS102 Data Structures", day: "Wednesday", start: "13:00", end: "15:00", room: "Lab C", color: "#dc2626" },
+    
+    { id: 8, name: "ENG102 Technical Writing", day: "Thursday", start: "09:00", end: "10:00", room: "Room 201", color: "#7c3aed" },
+    { id: 9, name: "PHY101 Physics Lecture", day: "Thursday", start: "11:00", end: "12:00", room: "Hall B", color: "#d97706" },
+    
+    { id: 10, name: "CS102 Data Structures", day: "Friday", start: "10:00", end: "12:00", room: "Lab C", color: "#dc2626" }
+  ];
+
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const timeSlots = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"];
+
+  const form = document.getElementById("course-form");
+  const alertBox = document.getElementById("alert-box");
+  const tbody = document.getElementById("timetable-body");
+
+  // Colors for new custom courses
+  const colors = ["#2563eb", "#059669", "#d97706", "#7c3aed", "#dc2626", "#0891b2", "#4d7c0f"];
+
+  function timeToMinutes(timeStr) {
+    const [h, m] = timeStr.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  // Conflict Detection Algorithm
+  function checkConflict(newCourse) {
+    const newStart = timeToMinutes(newCourse.start);
+    const newEnd = timeToMinutes(newCourse.end);
+
+    if (newStart >= newEnd) {
+      return "End time must be strictly after Start time.";
+    }
+
+    for (let course of schedule) {
+      if (course.day === newCourse.day) {
+        const existStart = timeToMinutes(course.start);
+        const existEnd = timeToMinutes(course.end);
+
+        // Check overlapping interval condition: max(Start1, Start2) < min(End1, End2)
+        if (Math.max(newStart, existStart) < Math.min(newEnd, existEnd)) {
+          return `Time conflict with existing course "${course.name}" (${course.start} - ${course.end}) on ${course.day}.`;
+        }
+      }
+    }
+    return null;
+  }
+
+  function renderTable() {
+    tbody.innerHTML = "";
+
+    timeSlots.forEach(slot => {
+      const row = document.createElement("tr");
+      
+      // Time label column
+      const timeTd = document.createElement("td");
+      timeTd.className = "time-col";
+      const startHour = parseInt(slot.split(":")[0]);
+      const ampm = startHour >= 12 ? "PM" : "AM";
+      const displayHour = startHour > 12 ? startHour - 12 : startHour;
+      timeTd.textContent = `${displayHour}:00 ${ampm}`;
+      row.appendChild(timeTd);
+
+      // Day columns
+      days.forEach(day => {
+        const td = document.createElement("td");
+        
+        // Find courses taking place during this day and time slot
+        const slotMin = timeToMinutes(slot);
+        const matchingCourses = schedule.filter(c => {
+          const cStart = timeToMinutes(c.start);
+          const cEnd = timeToMinutes(c.end);
+          return c.day === day && slotMin >= cStart && slotMin < cEnd;
+        });
+
+        matchingCourses.forEach(course => {
+          const chip = document.createElement("div");
+          chip.className = "course-chip";
+          chip.style.backgroundColor = course.color;
+          chip.innerHTML = `
+            <button class="delete-btn" onclick="deleteCourse(${course.id})">×</button>
+            <strong>${course.name}</strong>
+            <div class="location">${course.room} (${course.start}-${course.end})</div>
+          `;
+          td.appendChild(chip);
+        });
+
+        row.appendChild(td);
+      });
+
+      tbody.appendChild(row);
+    });
+  }
+
+  function showAlert(message) {
+    alertBox.textContent = message;
+    alertBox.style.display = "block";
+  }
+
+  function clearAlert() {
+    alertBox.textContent = "";
+    alertBox.style.display = "none";
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearAlert();
+
+    const newCourse = {
+      id: Date.now(),
+      name: document.getElementById("course-code").value.trim(),
+      day: document.getElementById("day").value,
+      start: document.getElementById("start-time").value,
+      end: document.getElementById("end-time").value,
+      room: document.getElementById("location").value.trim(),
+      color: colors[Math.floor(Math.random() * colors.length)]
+    };
+
+    const conflictError = checkConflict(newCourse);
+    if (conflictError) {
+      showAlert(conflictError);
+      return;
+    }
+
+    schedule.push(newCourse);
+    renderTable();
+    form.reset();
+  });
+
+  window.deleteCourse = function(id) {
+    schedule = schedule.filter(c => c.id !== id);
+    renderTable();
+  };
+
+  // Initial render
+  renderTable();
+</script>
+
+</body>
+</html>
